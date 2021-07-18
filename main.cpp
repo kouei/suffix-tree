@@ -4,7 +4,7 @@ using namespace std;
 struct Node;
 
 struct Edge {
-    string label;
+    int l, r;
     Node * next;
 };
 
@@ -24,19 +24,19 @@ Node * new_node() {
     return node;
 }
 
-Edge & find_edge_with_prefix(vector<Edge> & edges, char prefix) {
+Edge & find_edge_with_prefix(const string & s, vector<Edge> & edges, char prefix) {
     for(Edge & e : edges) {
-        if(e.label[0] == prefix) {
+        if(s[e.l] == prefix) {
             return e;
         }
     }
     return edges[0];
 }
 
-int get_first_mismatch_index(const string & a, const string & b) {
+int get_first_mismatch_index(const string & s, int a_l, int a_r, int b_l, int b_r) {
     int i = 0;
-    while(i < a.size() && i < b.size()) {
-        if(a[i] != b[i]) {
+    while(a_l + i <= a_r && b_l + i <= b_r) {
+        if(s[a_l + i] != s[b_l + i]) {
             break;
         }
         ++i;
@@ -44,39 +44,39 @@ int get_first_mismatch_index(const string & a, const string & b) {
     return i;
 }
 
-void insert(Node * root, const string & s_suffix, char ch, Node * & last_newly_created_internal_node) {
+void insert(Node * root, const string & s, int s_l, int s_r, int new_ch_pos, Node * & last_newly_created_internal_node) {
 
-    Edge & e = find_edge_with_prefix(root->edges, s_suffix[0]);
+    Edge & e = find_edge_with_prefix(s, root->edges, s[s_l]);
 
-    int i = get_first_mismatch_index(e.label, s_suffix);
+    int i = get_first_mismatch_index(s, e.l, e.r, s_l, s_r);
 
-    if(i >= e.label.size() && i >= s_suffix.size()) {
+    if(e.l + i > e.r && s_l + i > s_r) {
         if(!e.next) {
-            e.label += ch;
+            e.r += 1;
         } else {
             for(Edge & ee : e.next->edges) {
-                if(ee.label[0] == ch) {
+                if(s[ee.l] == s[new_ch_pos]) {
                     return;
                 }
             }
-            e.next->edges.push_back({ {ch}, nullptr });
+            e.next->edges.push_back({ new_ch_pos, new_ch_pos, nullptr });
         }
-    } else if(i >= e.label.size()) {
-        insert(e.next, s_suffix.substr(i), ch, last_newly_created_internal_node);
-    } else if(i >= s_suffix.size()) {
-        if(e.label[i] == ch) {
+    } else if(e.l + i > e.r) {
+        insert(e.next, s, s_l + i, s_r, new_ch_pos, last_newly_created_internal_node);
+    } else if(s_l + i > s_r) {
+        if(s[e.l + i] == s[new_ch_pos]) {
             return;
         } else {
             Node * node = new_node();
             
-            node->edges.push_back({ e.label.substr(i), e.next });
+            node->edges.push_back({ e.l + i, e.r, e.next });
             if(e.next) {
                 e.next->parent = node;
             }
-            node->edges.push_back({ {ch}, nullptr });
+            node->edges.push_back({ new_ch_pos, new_ch_pos, nullptr });
             node->parent = root;
 
-            e.label = e.label.substr(0, i);
+            e.r = e.l + i - 1;
             e.next = node;
 
             if(last_newly_created_internal_node) {
@@ -89,29 +89,29 @@ void insert(Node * root, const string & s_suffix, char ch, Node * & last_newly_c
     }
 }
 
-void insert(Node * root, char ch) {
+void insert(Node * root, int new_ch_pos, const string & s) {
     for(Edge & e : root->edges) {
-        if(e.label[0] == ch) {
+        if(s[e.l] == s[new_ch_pos]) {
             return;
         }
     }
-    root->edges.push_back({ {ch}, nullptr });
+    root->edges.push_back({ new_ch_pos, new_ch_pos, nullptr });
 }
 
-Node * build_tree(string s) {
+Node * build_tree(string & s) {
     int m = s.size();
     s = "^" + s + "$";
     Node * root = new_node();
-    root->edges.push_back({ {s[1]}, nullptr });
+    root->edges.push_back({ 1, 1, nullptr });
 
     for(int i = 1; i <= m - 1; ++i) {
         printf("begin {phase %d}\n", i + 1);
         Node * last_newly_created_internal_node = nullptr;
         for(int j = 1; j <= i; ++j) {
             printf("begin {extension %d}\n", j);
-            insert(root, s.substr(j, i - j + 1), s[i + 1], last_newly_created_internal_node);
+            insert(root, s, j, i, i + 1, last_newly_created_internal_node);
         }
-        insert(root, s[i + 1]);
+        insert(root, i + 1, s);
         if(last_newly_created_internal_node) {
             last_newly_created_internal_node->suffix_link = root;
         }
@@ -121,7 +121,7 @@ Node * build_tree(string s) {
     return root;
 }
 
-void print(Node * root) {
+void print(Node * root, const string & s) {
     if(!root) {
         return;
     }
@@ -141,22 +141,23 @@ void print(Node * root) {
 
     for(const Edge & e : root->edges) {
         if(e.next) {
-            printf("Label: %s,\tNext: %d\n", e.label.c_str(), e.next->id);
+            printf("Label: %s,\tNext: %d\n", s.substr(e.l, e.r - e.l + 1).c_str(), e.next->id);
         } else {
-            printf("Label: %s,\tNext: nullptr\n", e.label.c_str());
+            printf("Label: %s,\tNext: nullptr\n", s.substr(e.l, e.r - e.l + 1).c_str());
         }
     }
     printf("\n");
 
     for(const Edge & e : root->edges) {
-        print(e.next);
+        print(e.next, s);
     }
 }
 
 int main() {
     char buf[128];
     scanf("%s", buf);
-    Node * root = build_tree(buf);
-    print(root);
+    string s(buf);
+    Node * root = build_tree(s);
+    print(root, s);
     return 0;
 }
