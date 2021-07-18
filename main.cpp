@@ -40,24 +40,38 @@ Edge & find_edge_with_prefix(const string & s, vector<Edge> & edges, char prefix
     return edges[0];
 }
 
-int get_first_mismatch_index(const string & s, int a_l, int a_r, int b_l, int b_r) {
-    int i = 0;
-    while(a_l + i <= a_r && b_l + i <= b_r) {
-        if(s[a_l + i] != s[b_l + i]) {
-            break;
-        }
-        ++i;
-    }
-    return i;
-}
-
 LastPosition insert(Node * root, const string & s, int s_l, int s_r, int new_ch_pos, Node * & last_newly_created_internal_node) {
 
     Edge & e = find_edge_with_prefix(s, root->edges, s[s_l]);
 
-    int i = get_first_mismatch_index(s, e.l, e.r, s_l, s_r);
+    int e_len = e.r - e.l + 1;
+    int s_len = s_r - s_l + 1;
 
-    if(e.l + i > e.r && s_l + i > s_r) {
+    if(e_len < s_len) {
+        return insert(e.next, s, s_l + e_len, s_r, new_ch_pos, last_newly_created_internal_node);
+    } else if(e_len > s_len) {
+        if(s[e.l + s_len] == s[new_ch_pos]) {
+            return { root, e.l, e.l + s_len - 1, false };
+        } else {
+            Node * node = new_node();
+            
+            node->edges.push_back({ e.l + s_len, e.r, e.next });
+            if(e.next) {
+                e.next->parent = node;
+            }
+            node->edges.push_back({ new_ch_pos, new_ch_pos, nullptr });
+            node->parent = root;
+
+            e.r = e.l + s_len - 1;
+            e.next = node;
+
+            if(last_newly_created_internal_node) {
+                last_newly_created_internal_node->suffix_link = node;
+            }
+            last_newly_created_internal_node = node;
+            return { root, e.l, e.r, false };
+        }
+    } else {
         if(!e.next) {
             e.r += 1;
             return { root, e.l, e.r - 1, false };
@@ -70,32 +84,6 @@ LastPosition insert(Node * root, const string & s, int s_l, int s_r, int new_ch_
             e.next->edges.push_back({ new_ch_pos, new_ch_pos, nullptr });
             return { root, e.l, e.r, false };
         }
-    } else if(e.l + i > e.r) {
-        return insert(e.next, s, s_l + i, s_r, new_ch_pos, last_newly_created_internal_node);
-    } else if(s_l + i > s_r) {
-        if(s[e.l + i] == s[new_ch_pos]) {
-            return { root, e.l, e.l + i - 1, false };
-        } else {
-            Node * node = new_node();
-            
-            node->edges.push_back({ e.l + i, e.r, e.next });
-            if(e.next) {
-                e.next->parent = node;
-            }
-            node->edges.push_back({ new_ch_pos, new_ch_pos, nullptr });
-            node->parent = root;
-
-            e.r = e.l + i - 1;
-            e.next = node;
-
-            if(last_newly_created_internal_node) {
-                last_newly_created_internal_node->suffix_link = node;
-            }
-            last_newly_created_internal_node = node;
-            return { root, e.l, e.r, false };
-        }
-    } else {
-        assert("Reach impossible code path!" && false);
     }
 }
 
