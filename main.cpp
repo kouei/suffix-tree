@@ -15,6 +15,13 @@ struct Node {
     vector<Edge> edges;
 };
 
+struct LastPosition {
+    Node * last_node;
+    int new_l;
+    int new_r;
+    bool should_end_extension;
+};
+
 Node * new_node() {
     static int id = 1;
     Node * node = new Node();
@@ -44,7 +51,7 @@ int get_first_mismatch_index(const string & s, int a_l, int a_r, int b_l, int b_
     return i;
 }
 
-void insert(Node * root, const string & s, int s_l, int s_r, int new_ch_pos, Node * & last_newly_created_internal_node) {
+LastPosition insert(Node * root, const string & s, int s_l, int s_r, int new_ch_pos, Node * & last_newly_created_internal_node) {
 
     Edge & e = find_edge_with_prefix(s, root->edges, s[s_l]);
 
@@ -53,19 +60,21 @@ void insert(Node * root, const string & s, int s_l, int s_r, int new_ch_pos, Nod
     if(e.l + i > e.r && s_l + i > s_r) {
         if(!e.next) {
             e.r += 1;
+            return { root, e.l, e.r - 1, false };
         } else {
             for(Edge & ee : e.next->edges) {
                 if(s[ee.l] == s[new_ch_pos]) {
-                    return;
+                    return { root, e.l, e.r, false };
                 }
             }
             e.next->edges.push_back({ new_ch_pos, new_ch_pos, nullptr });
+            return { root, e.l, e.r, false };
         }
     } else if(e.l + i > e.r) {
-        insert(e.next, s, s_l + i, s_r, new_ch_pos, last_newly_created_internal_node);
+        return insert(e.next, s, s_l + i, s_r, new_ch_pos, last_newly_created_internal_node);
     } else if(s_l + i > s_r) {
         if(s[e.l + i] == s[new_ch_pos]) {
-            return;
+            return { root, e.l, e.l + i - 1, false };
         } else {
             Node * node = new_node();
             
@@ -83,6 +92,7 @@ void insert(Node * root, const string & s, int s_l, int s_r, int new_ch_pos, Nod
                 last_newly_created_internal_node->suffix_link = node;
             }
             last_newly_created_internal_node = node;
+            return { root, e.l, e.r, false };
         }
     } else {
         assert("Reach impossible code path!" && false);
@@ -107,9 +117,22 @@ Node * build_tree(string & s) {
     for(int i = 1; i <= m - 1; ++i) {
         printf("begin {phase %d}\n", i + 1);
         Node * last_newly_created_internal_node = nullptr;
+
+        LastPosition last_pos;
+        last_pos.last_node = nullptr;
+
         for(int j = 1; j <= i; ++j) {
             printf("begin {extension %d}\n", j);
-            insert(root, s, j, i, i + 1, last_newly_created_internal_node);
+
+            if(!last_pos.last_node) {
+                last_pos = insert(root, s, j, i, i + 1, last_newly_created_internal_node);
+            } else {
+                if(last_pos.last_node->suffix_link) {
+                    last_pos = insert(last_pos.last_node->suffix_link, s, last_pos.new_l, last_pos.new_r, i + 1, last_newly_created_internal_node);
+                } else {
+                    last_pos = insert(root, s, j, i, i + 1, last_newly_created_internal_node);
+                }
+            }
         }
         insert(root, i + 1, s);
         if(last_newly_created_internal_node) {
