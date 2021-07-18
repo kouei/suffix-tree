@@ -10,23 +10,23 @@ struct Edge {
 
 struct Node {
     int id;
-    Node * parent;
     Node * suffix_link;
     vector<Edge> edges;
 };
 
-struct LastPosition {
+struct LastExtensionResult {
     Node * last_node;
     int new_l;
     int new_r;
-    bool should_end_extension;
+    bool is_extension_rule3_applied;
 };
+
+const int GLOBAL_LEAF_R_PLACE_HOLDER = -1;
 
 Node * new_node() {
     static int id = 1;
     Node * node = new Node();
     node->id = id++;
-    node->parent = nullptr;
     node->suffix_link = nullptr;
     return node;
 }
@@ -40,49 +40,49 @@ Edge & find_edge_with_prefix(const string & s, vector<Edge> & edges, char prefix
     return edges[0];
 }
 
-LastPosition insert(Node * root, const string & s, int s_l, int s_r, int new_ch_pos, Node * & last_newly_created_internal_node) {
+LastExtensionResult insert(Node * root, const string & s, int s_l, int s_r, int new_ch_pos, Node * & last_newly_created_internal_node, int global_leaf_r) {
 
     Edge & e = find_edge_with_prefix(s, root->edges, s[s_l]);
 
-    int e_len = e.r - e.l + 1;
+    int e_r = e.r == GLOBAL_LEAF_R_PLACE_HOLDER ? global_leaf_r - 1 : e.r;
+
+    int e_len = e_r - e.l + 1;
     int s_len = s_r - s_l + 1;
 
     if(e_len < s_len) {
-        return insert(e.next, s, s_l + e_len, s_r, new_ch_pos, last_newly_created_internal_node);
+        return insert(e.next, s, s_l + e_len, s_r, new_ch_pos, last_newly_created_internal_node, global_leaf_r);
     } else if(e_len > s_len) {
         if(s[e.l + s_len] == s[new_ch_pos]) {
-            return { root, e.l, e.l + s_len - 1, false };
+            // Rule 3 applied
+            return { root, e.l, e.l + s_len, true };
         } else {
             Node * node = new_node();
             
-            node->edges.push_back({ e.l + s_len, e.r, e.next });
-            if(e.next) {
-                e.next->parent = node;
-            }
-            node->edges.push_back({ new_ch_pos, new_ch_pos, nullptr });
-            node->parent = root;
+            node->edges.push_back({ e.l + s_len, e_r, e.next });
+            node->edges.push_back({ new_ch_pos, GLOBAL_LEAF_R_PLACE_HOLDER, nullptr });
 
-            e.r = e.l + s_len - 1;
+            e_r = e.l + s_len - 1;
             e.next = node;
+            e.r = e_r;
 
             if(last_newly_created_internal_node) {
                 last_newly_created_internal_node->suffix_link = node;
             }
             last_newly_created_internal_node = node;
-            return { root, e.l, e.r, false };
+            return { root, e.l, e_r, false };
         }
     } else {
         if(!e.next) {
-            e.r += 1;
-            return { root, e.l, e.r - 1, false };
+            return { root, e.l, e.l + s_len, false };
         } else {
             for(Edge & ee : e.next->edges) {
                 if(s[ee.l] == s[new_ch_pos]) {
-                    return { root, e.l, e.r, false };
+                    // Rule 3 applied
+                    return { e.next, ee.l, ee.l, true };
                 }
             }
-            e.next->edges.push_back({ new_ch_pos, new_ch_pos, nullptr });
-            return { root, e.l, e.r, false };
+            e.next->edges.push_back({ new_ch_pos, GLOBAL_LEAF_R_PLACE_HOLDER, nullptr });
+            return { root, e.l, e_r, false };
         }
     }
 }
@@ -93,33 +93,54 @@ void insert(Node * root, int new_ch_pos, const string & s) {
             return;
         }
     }
-    root->edges.push_back({ new_ch_pos, new_ch_pos, nullptr });
+    root->edges.push_back({ new_ch_pos, GLOBAL_LEAF_R_PLACE_HOLDER, nullptr });
+}
+
+void restore_leaf_r(Node * root, int global_leaf_r) {
+    if(!root) {
+        return;
+    }
+
+    for(Edge & e : root->edges) {
+        if(!e.next) {
+            e.r = global_leaf_r;
+        } else {
+            restore_leaf_r(e.next, global_leaf_r);
+        }
+    }
 }
 
 Node * build_tree(string & s) {
     int m = s.size();
     s = "^" + s + "$";
+
     Node * root = new_node();
-    root->edges.push_back({ 1, 1, nullptr });
+    root->edges.push_back({ 1, GLOBAL_LEAF_R_PLACE_HOLDER, nullptr });
+    int global_leaf_r = 1;
+
+    LastExtensionResult last_extension_result{ root, 1, 1, false };
+    int last_j = 1;
 
     for(int i = 1; i <= m - 1; ++i) {
         printf("begin {phase %d}\n", i + 1);
+
+        global_leaf_r += 1;
+
         Node * last_newly_created_internal_node = nullptr;
 
-        LastPosition last_pos;
-        last_pos.last_node = nullptr;
-
-        for(int j = 1; j <= i; ++j) {
+        for(int j = last_j; j <= i; ++j) {
             printf("begin {extension %d}\n", j);
 
-            if(!last_pos.last_node) {
-                last_pos = insert(root, s, j, i, i + 1, last_newly_created_internal_node);
+            if(last_extension_result.last_node->suffix_link) {
+                last_extension_result = insert(last_extension_result.last_node->suffix_link, s, last_extension_result.new_l, last_extension_result.new_r, i + 1, last_newly_created_internal_node, global_leaf_r);
             } else {
-                if(last_pos.last_node->suffix_link) {
-                    last_pos = insert(last_pos.last_node->suffix_link, s, last_pos.new_l, last_pos.new_r, i + 1, last_newly_created_internal_node);
-                } else {
-                    last_pos = insert(root, s, j, i, i + 1, last_newly_created_internal_node);
-                }
+                last_extension_result = insert(root, s, j, i, i + 1, last_newly_created_internal_node, global_leaf_r);
+            }
+
+            if(last_extension_result.is_extension_rule3_applied) {
+                printf("Extension Rule 3 is applied, skip to next phase\n");
+                last_j = j;
+                break;
             }
         }
         insert(root, i + 1, s);
@@ -128,6 +149,8 @@ Node * build_tree(string & s) {
         }
         printf("\n");
     }
+
+    restore_leaf_r(root, global_leaf_r);
 
     return root;
 }
@@ -138,11 +161,6 @@ void print(Node * root, const string & s) {
     }
 
     printf("Node %d:\n", root->id);
-    if(root->parent) {
-        printf("Parent: %d\n", root->parent->id);
-    } else {
-        printf("Parent: nullptr\n");
-    }
 
     if(root->suffix_link) {
         printf("Suffix Link: %d\n", root->suffix_link->id);
@@ -152,9 +170,9 @@ void print(Node * root, const string & s) {
 
     for(const Edge & e : root->edges) {
         if(e.next) {
-            printf("Label: %s,\tNext: %d\n", s.substr(e.l, e.r - e.l + 1).c_str(), e.next->id);
+            printf("Left: %d, Right: %d, Label: %s,\tNext: %d\n", e.l, e.r, s.substr(e.l, e.r - e.l + 1).c_str(), e.next->id);
         } else {
-            printf("Label: %s,\tNext: nullptr\n", s.substr(e.l, e.r - e.l + 1).c_str());
+            printf("Left: %d, Right: %d, Label: %s,\tNext: nullptr\n", e.l, e.r, s.substr(e.l, e.r - e.l + 1).c_str());
         }
     }
     printf("\n");
