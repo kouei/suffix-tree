@@ -39,7 +39,7 @@ Edge * find_edge_with_prefix(const string & s, vector<Edge> & edges, char prefix
     return nullptr;
 }
 
-ExtensionResult insert(Node * root, const string & s, int s_l, int s_r, int new_ch_pos, Node * & last_newly_created_internal_node, int global_leaf_r) {
+ExtensionResult insert(Node * root, const string & s, int s_l, int s_r, Node * & last_newly_created_internal_node, int global_leaf_r) {
 
     Edge * e = find_edge_with_prefix(s, root->edges, s[s_l]);
 
@@ -51,21 +51,21 @@ ExtensionResult insert(Node * root, const string & s, int s_l, int s_r, int new_
     int e_r = e->r == GLOBAL_LEAF_R_PLACE_HOLDER ? global_leaf_r - 1 : e->r;
 
     int e_len = e_r - e->l + 1;
-    int s_len = s_r - s_l + 1;
+    int s_len_without_new_ch = s_r - s_l;
 
-    if(e_len < s_len) {
-        return insert(e->next, s, s_l + e_len, s_r, new_ch_pos, last_newly_created_internal_node, global_leaf_r);
-    } else if(e_len > s_len) {
-        if(s[e->l + s_len] == s[new_ch_pos]) {
+    if(e_len < s_len_without_new_ch) {
+        return insert(e->next, s, s_l + e_len, s_r, last_newly_created_internal_node, global_leaf_r);
+    } else if(e_len > s_len_without_new_ch) {
+        if(s[e->l + s_len_without_new_ch] == s[s_r]) {
             // Rule 3 applied
-            return { root, s_len + 1, true };
+            return { root, s_len_without_new_ch + 1, true };
         } else {
             Node * node = new_node();
             
-            node->edges.push_back({ e->l + s_len, e_r, e->next });
-            node->edges.push_back({ new_ch_pos, GLOBAL_LEAF_R_PLACE_HOLDER, nullptr });
+            node->edges.push_back({ e->l + s_len_without_new_ch, e_r, e->next });
+            node->edges.push_back({ s_r, GLOBAL_LEAF_R_PLACE_HOLDER, nullptr });
 
-            e_r = e->l + s_len - 1;
+            e_r = e->l + s_len_without_new_ch - 1;
             e->next = node;
             e->r = e_r;
 
@@ -77,15 +77,15 @@ ExtensionResult insert(Node * root, const string & s, int s_l, int s_r, int new_
         }
     } else {
         if(!e->next) {
-            return { root, s_len, false };
+            return { root, s_len_without_new_ch, false };
         } else {
             for(Edge & ee : e->next->edges) {
-                if(s[ee.l] == s[new_ch_pos]) {
+                if(s[ee.l] == s[s_r]) {
                     // Rule 3 applied
                     return { e->next, 1, true };
                 }
             }
-            e->next->edges.push_back({ new_ch_pos, GLOBAL_LEAF_R_PLACE_HOLDER, nullptr });
+            e->next->edges.push_back({ s_r, GLOBAL_LEAF_R_PLACE_HOLDER, nullptr });
             return { root, e_r - e->l + 1, false };
         }
     }
@@ -127,9 +127,9 @@ Node * build_tree(string & s) {
             printf("begin {extension %d}\n", j);
 
             if(last_extension_result.last_node->suffix_link) {
-                last_extension_result = insert(last_extension_result.last_node->suffix_link, s, i - last_extension_result.characters_going_down_the_edge + 1, i, i + 1, last_newly_created_internal_node, global_leaf_r);
+                last_extension_result = insert(last_extension_result.last_node->suffix_link, s, i - last_extension_result.characters_going_down_the_edge + 1, i + 1, last_newly_created_internal_node, global_leaf_r);
             } else {
-                last_extension_result = insert(root, s, j, i, i + 1, last_newly_created_internal_node, global_leaf_r);
+                last_extension_result = insert(root, s, j, i + 1, last_newly_created_internal_node, global_leaf_r);
             }
 
             last_j = j;
