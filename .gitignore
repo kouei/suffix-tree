@@ -1,1 +1,6 @@
-main
+.vs/
+Debug/
+suffix-tree.sln
+suffix-tree.vcxproj
+suffix-tree.vcxproj.filters
+suffix-tree.vcxproj.user
