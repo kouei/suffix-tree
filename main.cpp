@@ -6,7 +6,7 @@
 #include<cassert>
 using namespace std;
 
-#define MY_DEBUG
+//#define MY_DEBUG
 
 #ifdef MY_DEBUG
 auto comment = printf;
@@ -23,7 +23,6 @@ struct Edge {
 
 struct Node {
     int id{-1};
-    Node* parent{ nullptr };
     Node* suffix_link{nullptr};
     vector<Edge> edges;
 };
@@ -38,9 +37,7 @@ const int GLOBAL_LEAF_R_PLACE_HOLDER = -1;
 
 Node* new_node() {
     static int id = 1;
-    Node* node = new Node();
-    node->id = id++;
-    node->suffix_link = nullptr;
+	Node* node = new Node{ id++, nullptr };
     return node;
 }
 
@@ -89,12 +86,7 @@ ExtensionResult insert(Node* root, int s_l, int s_r, Node*& last_newly_created_i
 
             node->edges.push_back({ e->l + s_len_without_new_ch, e->r, e->next });
             node->edges.push_back({ s_r, GLOBAL_LEAF_R_PLACE_HOLDER, nullptr });
-            node->parent = root;
             
-            if (e->next) {
-                e->next->parent = node;
-            }
-
             e_r = e->l + s_len_without_new_ch - 1;
             e->next = node;
             e->r = e_r;
@@ -206,13 +198,6 @@ void print(Node* root, const string& s) {
     }
     else {
         comment("Suffix Link: nullptr\n");
-    }
-
-    if (root->parent) {
-        comment("Parent: %d\n", root->parent->id);
-    }
-    else {
-        comment("Parent: nullptr\n");
     }
 
     for (const Edge& e : root->edges) {
