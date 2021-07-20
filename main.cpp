@@ -68,7 +68,7 @@ ExtensionResult insert(Node* root, const string& s, int s_l, int s_r, Node*& las
         else {
             Node* node = new_node();
 
-            node->edges.push_back({ e->l + s_len_without_new_ch, e_r, e->next });
+            node->edges.push_back({ e->l + s_len_without_new_ch, e->r, e->next });
             node->edges.push_back({ s_r, GLOBAL_LEAF_R_PLACE_HOLDER, nullptr });
 
             e_r = e->l + s_len_without_new_ch - 1;
