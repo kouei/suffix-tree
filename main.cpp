@@ -6,6 +6,14 @@
 #include<cassert>
 using namespace std;
 
+#define MY_DEBUG
+
+#ifdef MY_DEBUG
+auto comment = printf;
+#else
+inline void comment(...) {}
+#endif
+
 struct Node;
 
 struct Edge {
@@ -135,13 +143,13 @@ Node* build_tree(string& s) {
 	int last_j = 1;
 
     for (int i = 1; i <= m - 1; ++i) {
-        printf("begin {phase %d}\n", i + 1);
+        comment("begin {phase %d}\n", i + 1);
 
         global_leaf_r += 1;
 
         for (int j = last_j; j <= i + 1; ++j) {
 
-            printf("begin {extension %d}\n", j);
+            comment("begin {extension %d}\n", j);
 
             if (j == last_j) {
                 last_extension_result = insert(
@@ -174,11 +182,11 @@ Node* build_tree(string& s) {
 
             last_j = j;
             if (last_extension_result.is_extension_rule3_applied) {
-                printf("Extension Rule 3 is applied, skip to next phase\n");
+                comment("Extension Rule 3 is applied, skip to next phase\n");
                 break;
             }
         }
-        printf("\n");
+        comment("\n");
     }
 
     restore_leaf_r(root, global_leaf_r);
@@ -191,31 +199,31 @@ void print(Node* root, const string& s) {
         return;
     }
 
-    printf("Node %d:\n", root->id);
+    comment("Node %d:\n", root->id);
 
     if (root->suffix_link) {
-        printf("Suffix Link: %d\n", root->suffix_link->id);
+        comment("Suffix Link: %d\n", root->suffix_link->id);
     }
     else {
-        printf("Suffix Link: nullptr\n");
+        comment("Suffix Link: nullptr\n");
     }
 
     if (root->parent) {
-        printf("Parent: %d\n", root->parent->id);
+        comment("Parent: %d\n", root->parent->id);
     }
     else {
-        printf("Parent: nullptr\n");
+        comment("Parent: nullptr\n");
     }
 
     for (const Edge& e : root->edges) {
         if (e.next) {
-            printf("Left: %d, Right: %d, Label: %s,\tNext: %d\n", e.l, e.r, s.substr(e.l, e.r - e.l + 1).c_str(), e.next->id);
+            comment("Left: %d, Right: %d, Label: %s,\tNext: %d\n", e.l, e.r, s.substr(e.l, e.r - e.l + 1).c_str(), e.next->id);
         }
         else {
-            printf("Left: %d, Right: %d, Label: %s,\tNext: nullptr\n", e.l, e.r, s.substr(e.l, e.r - e.l + 1).c_str());
+            comment("Left: %d, Right: %d, Label: %s,\tNext: nullptr\n", e.l, e.r, s.substr(e.l, e.r - e.l + 1).c_str());
         }
     }
-    printf("\n");
+    comment("\n");
 
     for (const Edge& e : root->edges) {
         print(e.next, s);
