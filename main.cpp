@@ -14,6 +14,7 @@ struct Edge {
 
 struct Node {
     int id{-1};
+    Node* parent{ nullptr };
     Node* suffix_link{nullptr};
     vector<Edge> edges;
 };
@@ -70,6 +71,11 @@ ExtensionResult insert(Node* root, const string& s, int s_l, int s_r, Node*& las
 
             node->edges.push_back({ e->l + s_len_without_new_ch, e->r, e->next });
             node->edges.push_back({ s_r, GLOBAL_LEAF_R_PLACE_HOLDER, nullptr });
+            node->parent = root;
+            
+            if (e->next) {
+                e->next->parent = node;
+            }
 
             e_r = e->l + s_len_without_new_ch - 1;
             e->next = node;
@@ -171,6 +177,13 @@ void print(Node* root, const string& s) {
     }
     else {
         printf("Suffix Link: nullptr\n");
+    }
+
+    if (root->parent) {
+        printf("Parent: %d\n", root->parent->id);
+    }
+    else {
+        printf("Parent: nullptr\n");
     }
 
     for (const Edge& e : root->edges) {
