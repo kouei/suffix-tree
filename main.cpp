@@ -1,6 +1,8 @@
 #include<cstdio>
 #include<string>
 #include<vector>
+#include<iostream>
+#include<fstream>
 using namespace std;
 
 struct Node;
@@ -11,8 +13,8 @@ struct Edge {
 };
 
 struct Node {
-    int id;
-    Node* suffix_link;
+    int id{-1};
+    Node* suffix_link{nullptr};
     vector<Edge> edges;
 };
 
@@ -113,7 +115,7 @@ void restore_leaf_r(Node* root, int global_leaf_r) {
 }
 
 Node* build_tree(string& s) {
-    int m = s.size();
+    int m = static_cast<int>(s.size());
     s = "^" + s + "$";
 
     Node* root = new_node();
@@ -216,9 +218,9 @@ int find_start_index(Node* root, const string& s, const string& t, int t_start) 
 }
 
 int main() {
-    char buf[128];
-    scanf("%s", buf);
-    string s(buf);
+    fstream fin("input.txt", fstream::in);
+    string s;
+    fin >> s;
     Node* root = build_tree(s);
     print(root, s);
     return 0;
