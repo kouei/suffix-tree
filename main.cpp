@@ -222,35 +222,6 @@ void print(Node* root, const string& s) {
     }
 }
 
-int find_start_index(Node* root, const string& s, const string& t, int t_start) {
-    if (!root) {
-        return -1;
-    }
-
-    Edge* e = find_edge_with_prefix(s, root->edges, t[t_start]);
-    if (!e) {
-        return -1;
-    }
-
-    int i = 0;
-    while (t_start + i < t.size() && e->l + i <= e->r) {
-        if (s[e->l + i] != t[t_start + i]) {
-            return -1;
-        }
-        ++i;
-    }
-
-    if (t_start + i >= t.size()) {
-        return e->l;
-    }
-
-    if (find_start_index(e->next, s, t, t_start + i) == -1) {
-        return -1;
-    }
-
-    return e->l;
-}
-
 int main() {
     fstream fin("input.txt", fstream::in);
     string s;
