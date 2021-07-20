@@ -159,39 +159,7 @@ Node* build_tree(string& s) {
                         last_newly_created_internal_node,
                         s,
                         global_leaf_r);
-                }
-                else if (last_extension_result.last_node->parent) {
-                    if (last_extension_result.last_node->parent->suffix_link) {
-
-                        int parent_edge_len = -1;
-                        for (Edge& e : last_extension_result.last_node->parent->edges) {
-                            if (e.next == last_extension_result.last_node) {
-                                parent_edge_len = e.r - e.l + 1;
-                            }
-                        }
-                        assert(parent_edge_len != -1);
-
-                        int total_character_going_down = last_extension_result.characters_going_down_the_edge + parent_edge_len;
-
-                        last_extension_result = insert(
-                            last_extension_result.last_node->parent->suffix_link,
-                            i + 1 - total_character_going_down - 1,
-                            i + 1,
-                            last_newly_created_internal_node,
-                            s,
-                            global_leaf_r);
-                    }
-                    else {
-                        last_extension_result = insert(
-                            root,
-                            j,
-                            i + 1,
-                            last_newly_created_internal_node,
-                            s,
-                            global_leaf_r);
-                    }
-                }
-                else {
+                } else {
                     last_extension_result = insert(
                         root,
                         j,
