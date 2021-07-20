@@ -141,10 +141,6 @@ Node* build_tree(string& s) {
 
         for (int j = last_j; j <= i + 1; ++j) {
 
-            if (i + 1 == 12) {
-                printf("here\n");
-            }
-
             printf("begin {extension %d}\n", j);
 
             if (j == last_j) {
@@ -160,7 +156,7 @@ Node* build_tree(string& s) {
                 if (last_extension_result.last_node->suffix_link) {
                     last_extension_result = insert(
                         last_extension_result.last_node->suffix_link,
-                        i + 1 - last_extension_result.characters_going_down_the_edge - 1,
+                        i + 2 - last_extension_result.characters_going_down_the_edge,
                         i + 1,
                         last_newly_created_internal_node,
                         s,
