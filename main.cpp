@@ -45,12 +45,20 @@ Edge* find_edge_with_prefix(const string& s, vector<Edge>& edges, char prefix) {
     return nullptr;
 }
 
+void set_suffix_link(Node*& last_newly_created_internal_node, Node * node) {
+	if (last_newly_created_internal_node) {
+		last_newly_created_internal_node->suffix_link = node;
+		last_newly_created_internal_node = nullptr;
+	}
+}
+
 ExtensionResult insert(Node* root, int s_l, int s_r, Node*& last_newly_created_internal_node, const string& s, int global_leaf_r) {
 
     Edge* e = find_edge_with_prefix(s, root->edges, s[s_l]);
 
     if (!e) {
         root->edges.push_back({ s_l, GLOBAL_LEAF_R_PLACE_HOLDER, nullptr });
+		set_suffix_link(last_newly_created_internal_node, root);
         return { root, 1, false };
     }
 
@@ -65,6 +73,7 @@ ExtensionResult insert(Node* root, int s_l, int s_r, Node*& last_newly_created_i
     else if (e_len > s_len_without_new_ch) {
         if (s[e->l + s_len_without_new_ch] == s[s_r]) {
             // Rule 3 applied
+			set_suffix_link(last_newly_created_internal_node, root);
             return { root, s_len_without_new_ch + 1, true };
         }
         else {
@@ -82,16 +91,15 @@ ExtensionResult insert(Node* root, int s_l, int s_r, Node*& last_newly_created_i
             e->next = node;
             e->r = e_r;
 
-            if (last_newly_created_internal_node) {
-                last_newly_created_internal_node->suffix_link = node;
-            }
-            last_newly_created_internal_node = node;
-            return { node, 1, false };
+			set_suffix_link(last_newly_created_internal_node, node);
+			last_newly_created_internal_node = node;
+			return { node, 1, false };
         }
     }
     else {
         if (!e->next) {
-            return { root, s_len_without_new_ch + 1, false };
+			set_suffix_link(last_newly_created_internal_node, root);
+			return { root, s_len_without_new_ch + 1, false };
         }
         else {
             return insert(e->next, s_l + s_len_without_new_ch, s_r, last_newly_created_internal_node, s, global_leaf_r);
@@ -123,14 +131,13 @@ Node* build_tree(string& s) {
     int global_leaf_r = 1;
 
     ExtensionResult last_extension_result{ root, 1, false };
-    int last_j = 1;
+	Node* last_newly_created_internal_node = nullptr;
+	int last_j = 1;
 
     for (int i = 1; i <= m - 1; ++i) {
         printf("begin {phase %d}\n", i + 1);
 
         global_leaf_r += 1;
-
-        Node* last_newly_created_internal_node = nullptr;
 
         for (int j = last_j; j <= i + 1; ++j) {
 
@@ -175,9 +182,6 @@ Node* build_tree(string& s) {
                 break;
             }
         }
-        //if (last_newly_created_internal_node) {
-        //    last_newly_created_internal_node->suffix_link = root;
-        //}
         printf("\n");
     }
 
