@@ -3,6 +3,7 @@
 #include<vector>
 #include<iostream>
 #include<fstream>
+#include<cassert>
 using namespace std;
 
 struct Node;
@@ -21,6 +22,7 @@ struct Node {
 
 struct ExtensionResult {
     Node* last_node;
+    Edge* last_edge;
     int characters_going_down_the_edge;
     bool is_extension_rule3_applied;
 };
@@ -44,13 +46,13 @@ Edge* find_edge_with_prefix(const string& s, vector<Edge>& edges, char prefix) {
     return nullptr;
 }
 
-ExtensionResult insert(Node* root, const string& s, int s_l, int s_r, Node*& last_newly_created_internal_node, int global_leaf_r) {
+ExtensionResult insert(Node* root, int s_l, int s_r, Node*& last_newly_created_internal_node, const string& s, int global_leaf_r) {
 
     Edge* e = find_edge_with_prefix(s, root->edges, s[s_l]);
 
     if (!e) {
         root->edges.push_back({ s_l, GLOBAL_LEAF_R_PLACE_HOLDER, nullptr });
-        return { root, 1, false };
+        return { root, &root->edges.back(), 1, false };
     }
 
     int e_r = e->r == GLOBAL_LEAF_R_PLACE_HOLDER ? global_leaf_r - 1 : e->r;
@@ -59,12 +61,12 @@ ExtensionResult insert(Node* root, const string& s, int s_l, int s_r, Node*& las
     int s_len_without_new_ch = s_r - s_l;
 
     if (e_len < s_len_without_new_ch) {
-        return insert(e->next, s, s_l + e_len, s_r, last_newly_created_internal_node, global_leaf_r);
+        return insert(e->next, s_l + e_len, s_r, last_newly_created_internal_node, s, global_leaf_r);
     }
     else if (e_len > s_len_without_new_ch) {
         if (s[e->l + s_len_without_new_ch] == s[s_r]) {
             // Rule 3 applied
-            return { root, s_len_without_new_ch + 1, true };
+            return { root, e, s_len_without_new_ch + 1, true };
         }
         else {
             Node* node = new_node();
@@ -85,22 +87,15 @@ ExtensionResult insert(Node* root, const string& s, int s_l, int s_r, Node*& las
                 last_newly_created_internal_node->suffix_link = node;
             }
             last_newly_created_internal_node = node;
-            return { root, e_r - e->l + 1, false };
+            return { node, &node->edges.back(), 1, false };
         }
     }
     else {
         if (!e->next) {
-            return { root, s_len_without_new_ch, false };
+            return { root, e, s_len_without_new_ch + 1, false };
         }
         else {
-            for (Edge& ee : e->next->edges) {
-                if (s[ee.l] == s[s_r]) {
-                    // Rule 3 applied
-                    return { e->next, 1, true };
-                }
-            }
-            e->next->edges.push_back({ s_r, GLOBAL_LEAF_R_PLACE_HOLDER, nullptr });
-            return { root, e_r - e->l + 1, false };
+            return insert(e->next, s_l + s_len_without_new_ch, s_r, last_newly_created_internal_node, s, global_leaf_r);
         }
     }
 }
@@ -128,7 +123,7 @@ Node* build_tree(string& s) {
     root->edges.push_back({ 1, GLOBAL_LEAF_R_PLACE_HOLDER, nullptr });
     int global_leaf_r = 1;
 
-    ExtensionResult last_extension_result{ root, 1, false };
+    ExtensionResult last_extension_result{ root, &root->edges.back(), 1, false };
     int last_j = 1;
 
     for (int i = 1; i <= m - 1; ++i) {
@@ -139,13 +134,72 @@ Node* build_tree(string& s) {
         Node* last_newly_created_internal_node = nullptr;
 
         for (int j = last_j; j <= i + 1; ++j) {
+
+            if (i + 1 == 12) {
+                printf("here\n");
+            }
+
             printf("begin {extension %d}\n", j);
 
-            if (last_extension_result.last_node->suffix_link) {
-                last_extension_result = insert(last_extension_result.last_node->suffix_link, s, i - last_extension_result.characters_going_down_the_edge + 1, i + 1, last_newly_created_internal_node, global_leaf_r);
+            if (j == last_j) {
+                last_extension_result = insert(
+                    last_extension_result.last_node,
+                    i + 1 - last_extension_result.characters_going_down_the_edge,
+                    i + 1,
+                    last_newly_created_internal_node,
+                    s,
+                    global_leaf_r);
             }
             else {
-                last_extension_result = insert(root, s, j, i + 1, last_newly_created_internal_node, global_leaf_r);
+                if (last_extension_result.last_node->suffix_link) {
+                    last_extension_result = insert(
+                        last_extension_result.last_node->suffix_link,
+                        i + 1 - last_extension_result.characters_going_down_the_edge - 1,
+                        i + 1,
+                        last_newly_created_internal_node,
+                        s,
+                        global_leaf_r);
+                }
+                else if (last_extension_result.last_node->parent) {
+                    if (last_extension_result.last_node->parent->suffix_link) {
+
+                        int parent_edge_len = -1;
+                        for (Edge& e : last_extension_result.last_node->parent->edges) {
+                            if (e.next == last_extension_result.last_node) {
+                                parent_edge_len = e.r - e.l + 1;
+                            }
+                        }
+                        assert(parent_edge_len != -1);
+
+                        int total_character_going_down = last_extension_result.characters_going_down_the_edge + parent_edge_len;
+
+                        last_extension_result = insert(
+                            last_extension_result.last_node->parent->suffix_link,
+                            i + 1 - total_character_going_down - 1,
+                            i + 1,
+                            last_newly_created_internal_node,
+                            s,
+                            global_leaf_r);
+                    }
+                    else {
+                        last_extension_result = insert(
+                            root,
+                            j,
+                            i + 1,
+                            last_newly_created_internal_node,
+                            s,
+                            global_leaf_r);
+                    }
+                }
+                else {
+                    last_extension_result = insert(
+                        root,
+                        j,
+                        i + 1,
+                        last_newly_created_internal_node,
+                        s,
+                        global_leaf_r);
+                }
             }
 
             last_j = j;
@@ -154,9 +208,9 @@ Node* build_tree(string& s) {
                 break;
             }
         }
-        if (last_newly_created_internal_node) {
-            last_newly_created_internal_node->suffix_link = root;
-        }
+        //if (last_newly_created_internal_node) {
+        //    last_newly_created_internal_node->suffix_link = root;
+        //}
         printf("\n");
     }
 
